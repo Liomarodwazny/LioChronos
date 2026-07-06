@@ -141,7 +141,7 @@ with aba1:
     st.subheader("Configurações Base e Identidade da Escola")
     col1, col2 = st.columns(2)
     with col1:
-        st.session_state.config['escola_nome'] = st.text_input("Nome da Escola (Aparece no PDF)", value=st.session_state.config.get('escola_nome', 'Colégio Carrossel'))
+        st.session_state.config['escola_nome'] = st.text_input("Nome da Escola (Aparece no PDF)", value=st.session_state.config.get('escola_nome', ''))
         st.session_state.config['periodos'] = st.number_input("Horários (Aulas) por dia", min_value=1, max_value=12, value=st.session_state.config.get('periodos', 9))
     with col2:
         logo_upload = st.file_uploader("Logótipo da Escola (Opcional - Usado no PDF)", type=["png", "jpg", "jpeg"])
