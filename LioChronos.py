@@ -65,7 +65,7 @@ if not st.session_state['autenticado']:
 # 3. INICIALIZAÇÃO DA MEMÓRIA
 # ==========================================
 if 'config' not in st.session_state:
-    st.session_state.config = {'dias': ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'], 'periodos': 9, 'escola_nome': 'Colégio Carrossel', 'escola_logo': None}
+    st.session_state.config = {'dias': ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'], 'periodos': 9, 'escola_nome': '', 'escola_logo': None}
 if 'disciplinas' not in st.session_state:
     st.session_state.disciplinas = []
 if 'turmas' not in st.session_state:
