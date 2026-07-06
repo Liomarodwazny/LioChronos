@@ -14,7 +14,7 @@ from fpdf import FPDF
 # ==========================================
 # 1. CONFIGURAÇÃO VISUAL E FUNÇÕES BASE
 # ==========================================
-st.set_page_config(page_title="LioChronos - Gestão Escolar", layout="wide")
+st.set_page_config(page_title="LioChronos - Horário Escolar", layout="wide")
 
 st.markdown("""
     <style>
@@ -132,7 +132,7 @@ with st.sidebar:
 # ==========================================
 # 5. INTERFACE DE ABAS
 # ==========================================
-st.title("⚙️ LioChronos - Gestão Escolar")
+st.title("⚙️ LioChronos - Horário Escolar")
 
 aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
     "⚙️ Configuração", "📚 Disciplinas", "🏫 Turmas", "👩‍🏫 Professores", "📅 Grade Curricular", "🚀 Gerador"
