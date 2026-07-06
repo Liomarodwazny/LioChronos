@@ -31,7 +31,7 @@ st.markdown("""
 if 'autenticado' not in st.session_state:
     st.session_state['autenticado'] = False
 
-# Dicionário de clientes (Na nuvem, isto pode ser movido para um ficheiro secreto do Streamlit)
+# Dicionário de clientes
 CLIENTES_CADASTRADOS = {
     "admin": "sabereducativo2026",
     "carrossel": "carrossel123",
@@ -58,7 +58,6 @@ if not st.session_state['autenticado']:
                 else:
                     st.error("❌ Utilizador ou palavra-passe incorretos.")
                     
-    # O st.stop() impede a leitura do resto do código se o utilizador não estiver logado
     st.stop()
 
 # ==========================================
@@ -74,6 +73,8 @@ if 'professores' not in st.session_state:
     st.session_state.professores = []
 if 'grade' not in st.session_state:
     st.session_state.grade = []
+if 'edit_grade_id' not in st.session_state:
+    st.session_state.edit_grade_id = None
 
 def gerar_id(): return uuid.uuid4().hex[:8]
 def get_nome(lista, _id): return next((item['nome'] for item in lista if item['id'] == _id), "Desconhecido")
@@ -230,7 +231,6 @@ with aba4:
                 dias = st.session_state.config.get('dias', [])
                 periodos = st.session_state.config.get('periodos', 9)
                 
-                # --- AÇÕES RÁPIDAS (Botões) ---
                 st.markdown("**Ações Rápidas (Preenchimento Automático):**")
                 c1, c2, c3 = st.columns(3)
                 meio = math.ceil(periodos / 2)
@@ -258,7 +258,6 @@ with aba4:
                     aplicar_turno('limpar', prof['id'])
                     st.rerun()
 
-                # --- AJUSTE FINO (Tabela) ---
                 st.markdown("**Ajuste Fino (Marque/Desmarque manualmente):**")
                 
                 with st.form(f"form_malha_{prof['id']}"):
@@ -328,16 +327,58 @@ with aba5:
         
         if grade_turma:
             for item in grade_turma:
-                c1, c2, c3, c4, c5 = st.columns([3, 3, 2, 2, 1])
+                # --- MODO DE VISUALIZAÇÃO ---
+                c1, c2, c3, c4, c5, c6 = st.columns([3, 3, 2, 2, 1, 1])
                 c1.write(get_nome(st.session_state.disciplinas, item['disciplinaId']))
+                
                 nome_prof = get_nome(st.session_state.professores, item['professorId'])
-                if item.get('professorIdSecundario'): nome_prof += f" & {get_nome(st.session_state.professores, item['professorIdSecundario'])}"
+                if item.get('professorIdSecundario'): 
+                    nome_prof += f" & {get_nome(st.session_state.professores, item['professorIdSecundario'])}"
                 c2.write(nome_prof)
                 c3.write(f"Aulas: {item['aulasSemana']}")
                 c4.write(f"Bloco: {item.get('blocoTamanho', 1)}x")
-                if c5.button("🗑️", key=f"del_g_{item['id']}"):
+                
+                # --- NOVO BOTÃO EDITAR ---
+                if c5.button("✏️", key=f"edit_g_{item['id']}", help="Editar esta regra"):
+                    st.session_state.edit_grade_id = item['id']
+                    st.rerun()
+                    
+                if c6.button("🗑️", key=f"del_g_{item['id']}", help="Eliminar regra"):
                     st.session_state.grade = [x for x in st.session_state.grade if x['id'] != item['id']]
                     st.rerun()
+                    
+                # --- MODO DE EDIÇÃO (Abre se clicar no botão) ---
+                if st.session_state.get('edit_grade_id') == item['id']:
+                    with st.container():
+                        st.info(f"✏️ **A editar a regra de:** {get_nome(st.session_state.disciplinas, item['disciplinaId'])}")
+                        with st.form(key=f"form_ed_{item['id']}"):
+                            ec1, ec2, ec3 = st.columns(3)
+                            
+                            profs_validos = {p['id']: p['nome'] for p in st.session_state.professores if item['disciplinaId'] in p.get('disciplinas', [])}
+                            
+                            idx_prof = list(profs_validos.keys()).index(item['professorId']) if item['professorId'] in profs_validos else 0
+                            novo_prof = ec1.selectbox("Prof. Titular", options=list(profs_validos.keys()), format_func=lambda x: profs_validos.get(x, "Nenhum"), index=idx_prof)
+
+                            op_codoc = [None] + list(profs_validos.keys())
+                            idx_sec = op_codoc.index(item.get('professorIdSecundario')) if item.get('professorIdSecundario') in op_codoc else 0
+                            novo_sec = ec2.selectbox("Co-docente", options=op_codoc, format_func=lambda x: profs_validos.get(x, "Nenhum"), index=idx_sec)
+
+                            novas_aulas = ec3.number_input("Aulas/Semana", min_value=1, max_value=20, value=item['aulasSemana'])
+                            novo_bloco = ec3.selectbox("Bloco Máximo", [1, 2, 3], index=[1, 2, 3].index(item.get('blocoTamanho', 1)))
+
+                            sc1, sc2 = st.columns([1, 4])
+                            if sc1.form_submit_button("💾 Guardar", type="primary"):
+                                item['professorId'] = novo_prof
+                                item['professorIdSecundario'] = novo_sec
+                                item['aulasSemana'] = novas_aulas
+                                item['blocoTamanho'] = novo_bloco
+                                st.session_state.edit_grade_id = None
+                                st.rerun()
+                                
+                            if sc2.form_submit_button("❌ Cancelar"):
+                                st.session_state.edit_grade_id = None
+                                st.rerun()
+                        st.markdown("---")
         else:
             st.info("Nenhuma disciplina adicionada para esta turma ainda.")
 
@@ -393,7 +434,6 @@ with aba6:
             solver = cp_model.CpSolver()
             solver.parameters.max_time_in_seconds = 30.0 
             
-            # --- SEMENTE ALEATÓRIA: Gera grades diferentes a cada tentativa ---
             solver.parameters.randomize_search = True
             solver.parameters.random_seed = random.randint(1, 10000)
             
@@ -419,9 +459,6 @@ with aba6:
                 st.error("❌ Conflito Inviável! O motor não conseguiu fechar a grade. Veja o diagnóstico abaixo:")
                 st.session_state.horario_final = None
                 
-                # ==========================================
-                # SISTEMA DE DIAGNÓSTICO DE ERROS
-                # ==========================================
                 max_aulas_semana = num_dias * num_periodos
                 erros_diag = []
                 
@@ -538,7 +575,6 @@ with aba6:
                 pdf.set_font("Arial", 'B', 12)
                 pdf.cell(0, 6, txt=limpar_texto_pdf(f"Turma: {turma}"), ln=True, align='C')
                 
-                # --- A SUA ASSINATURA DE AUTORIA ---
                 pdf.set_font("Arial", 'I', 9)
                 pdf.cell(0, 8, txt=limpar_texto_pdf("Horário gerado pelo LioChronos by Liomar Odwazny"), ln=True, align='C')
                 pdf.ln(3)
